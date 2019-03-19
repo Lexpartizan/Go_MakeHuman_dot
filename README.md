@@ -17,3 +17,5 @@ ToDo in the distant future or never:
 1. Fix eye's positions for some shapes.
 2. Clothes fitting (no have idea how).
 3. Generation face from photo (i learn python, maybe 2-5 years, maybe never)
+
+Public Domain or CC-by-zero.
