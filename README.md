@@ -20,6 +20,8 @@ https://www.youtube.com/watch?v=k1NCiSvbJ_Y
 
 https://www.youtube.com/watch?v=cPVjNh2Ki4I
 
+Add project for Godot.
+
 ToDo in the distant future or never:
 
 1. Fix eye's positions for some shapes.
