@@ -11,9 +11,13 @@ ToDo:
 3. Ready for Mixamo animation (tutorial).
 4. Fix bvh-animations problem (tutorial). 
 5. Export to Godot with shapekeys and animations (tutorial). Done!
+
 5.1 Export from Blender to glTF tutorial. 
+
 https://www.youtube.com/watch?v=k1NCiSvbJ_Y
+
 5.2 How use it in Godot tutorial.
+
 https://www.youtube.com/watch?v=cPVjNh2Ki4I
 
 ToDo in the distant future or never:
