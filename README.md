@@ -30,6 +30,7 @@ In game script must read shape-keys value from body and set it for shape-key clo
 
 How attach clothes for sckeleton.
 https://www.youtube.com/watch?v=ljK_FErSPQM
+
 How add shapekey for clothes.
 https://www.youtube.com/watch?v=OnZy3m6Yksk
 
