@@ -13,19 +13,26 @@ ToDo:
 5. Export to Godot with shapekeys and animations (tutorial). Done!
 
 5.1 Export from Blender to glTF tutorial. 
-
 https://www.youtube.com/watch?v=k1NCiSvbJ_Y
 
 5.2 How use it in Godot tutorial.
-
 https://www.youtube.com/watch?v=cPVjNh2Ki4I
 
-Add project for Godot.
+
 
 ToDo in the distant future or never:
 
 1. Fix eye's positions for some shapes.
 2. Clothes fitting (no have idea how).
+
+So, i have idea for clothes and eyes. Clothes must have shapekeys same like body.
+In game script must read shape-keys value from body and set it for shape-key clothes.
+
+How attach clothes for sckeleton.
+https://www.youtube.com/watch?v=ljK_FErSPQM
+How add shapekey for clothes.
+https://www.youtube.com/watch?v=OnZy3m6Yksk
+
 3. Generation face from photo (i learn python, maybe 2-5 years, maybe never)
 
 Public Domain or CC-by-zero.
