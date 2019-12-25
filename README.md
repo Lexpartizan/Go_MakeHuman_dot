@@ -4,8 +4,13 @@ ingame character generator for godot (based on the project Makehuman)
 This project for blender 2.79 and Godot.
 This contain basics *.blend-files with shapes and skeleton and another stuff, include tutorials in the future.
 
-ToDo: 
+I solved a big problem with the size of the mesh in the video memory. Previously, each character required a separate bag with all the blendshapes.
+And each character occupied 80 MB of video memory and it is without textures! 
+Characters will now be generated on the fly when loaded onto the stage and do not have blendshapes. 
+This takes one second at worst, and changing the blend size takes about 20 milliseconds. 
+But in memory now blockbuster ranks just 700 kilobytes.
 
+ToDo: 
 1. Make big blend-file with shapekeys from MakeHuman, using models from MakeHuman.
 2. Ready for bvh-animation (tutorial).
 3. Ready for Mixamo animation (tutorial).
