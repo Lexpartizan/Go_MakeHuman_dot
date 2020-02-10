@@ -1,0 +1,13 @@
+[gd_scene load_steps=2 format=2]
+
+[sub_resource type="GDScript" id=1]
+script/source = "extends Node
+
+func _ready():
+	var temp =load(\"res://char_edit/char_edit_GUI.tscn\").instance()
+	add_child(temp)
+	temp.set_character(load(\"res://char_edit/character.tscn\").instance())
+"
+
+[node name="Node" type="Node"]
+script = SubResource( 1 )
