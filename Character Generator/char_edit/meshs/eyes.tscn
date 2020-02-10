@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://char_edit/meshs/eyes.mesh" type="ArrayMesh" id=1]
+[ext_resource path="res://char_edit/meshs/mats/eyes.tres" type="Material" id=3]
+
+[node name="eyes" type="MeshInstance"]
+mesh = ExtResource( 1 )
+material/0 = ExtResource( 3 )
