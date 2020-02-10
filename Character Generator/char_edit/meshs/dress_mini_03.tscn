@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://char_edit/meshs/dress_mini_03.mesh" type="ArrayMesh" id=1]
+[ext_resource path="res://char_edit/meshs/mats/dress_mini_03.tres" type="Material" id=2]
+
+[node name="dress_mini_03" type="MeshInstance"]
+mesh = ExtResource( 1 )
+material/0 = ExtResource( 2 )
