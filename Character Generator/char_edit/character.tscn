@@ -1,0 +1,424 @@
+[gd_scene load_steps=4 format=2]
+
+[ext_resource path="res://char_edit/anims/character.tres" type="Animation" id=1]
+
+[sub_resource type="GDScript" id=1]
+script/source = "extends KinematicBody
+
+var appearance ={}
+func _ready():
+	take_on_clothes(\"body\")
+	take_on_clothes(\"eyes\")
+
+func generate_mesh(mesh_inst):
+	reset_mesh(mesh_inst)
+	var vertex_arr=mesh_inst.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	for shape_name in appearance:
+		var shp_indx =char_edit_global.meshs_shapes[mesh_inst.name][\"shp_name_index\"]
+		if shp_indx.keys().has(shape_name):
+			shp_indx = shp_indx[shape_name]
+			vertex_arr = update_vertex(mesh_inst,vertex_arr,shp_indx,appearance[shape_name])
+	save_mesh(mesh_inst,vertex_arr)
+
+func generate_all_meshs():
+	var time= OS.get_ticks_msec ( )
+	var meshs =$skeleton.get_children()
+	for mesh_inst in meshs:
+		generate_mesh(mesh_inst)
+	print (OS.get_ticks_msec ( )-time)
+	
+func reset_mesh(mesh_inst):
+	save_mesh(mesh_inst,char_edit_global.meshs_shapes[mesh_inst.name][\"base_form\"])
+
+func update_vertex(mesh_inst,vertex_arr,shp_indx,value):
+	var blend = char_edit_global.meshs_shapes[mesh_inst.name][\"blendshapes\"][shp_indx]
+	for i in range(len(vertex_arr)):
+		vertex_arr[i] += blend[i]*value
+	return vertex_arr
+
+func save_mesh(mesh_inst, vertex_arr):
+	var mat = mesh_inst.get_surface_material(0)
+	var mesh_arrs = mesh_inst.mesh.surface_get_arrays(0)
+	mesh_arrs[Mesh.ARRAY_VERTEX] = vertex_arr
+	mesh_inst.mesh = Mesh.new()
+	mesh_inst.mesh.add_surface_from_arrays (Mesh.PRIMITIVE_TRIANGLES,mesh_arrs)
+	mesh_inst.set_surface_material(0,mat)
+
+func update_morph(shape_name,value):
+	var temp = value;
+	if appearance.has(shape_name):
+		value -= appearance[shape_name]
+	var meshs =$skeleton.get_children()
+	for mesh_inst in meshs:
+		var shp_indx =char_edit_global.meshs_shapes[mesh_inst.name][\"shp_name_index\"]
+		if shp_indx.keys().has(shape_name):
+			shp_indx = shp_indx[shape_name]
+			var vertex_arr=mesh_inst.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+			save_mesh(mesh_inst,update_vertex(mesh_inst,vertex_arr,shp_indx,value))
+	appearance[shape_name] = temp
+	if appearance[shape_name]==0: #Удалим ключ, если он нулевой. Это позволит не крутить лишний раз цикл при генерации персонажа для этой формы
+		appearance.erase(shape_name)
+
+func random_face_gen(cartoonish):
+	for param in char_edit_global.meshs_shapes[\"forms\"][\"head\"].keys():
+		appearance [param] = randf()*cartoonish
+	generate_all_meshs()
+		
+func take_off_clothes(cloth):
+	var clothes = $skeleton.get_children()
+	for i in clothes:
+		if cloth == i.name:
+			i.queue_free()
+
+func take_on_clothes(cloth):
+	var take_cloth = $skeleton.get_children()
+	for i in take_cloth:
+		if cloth == i.name: # Проверка на то, что вещь уже одета. Иначе у нас снова будет такая же сцена, но её имя изменится, а у нас по имени загружается меш и тд. Короче, вылет.
+			return
+	take_cloth = load(\"res://char_edit/meshs/\"+cloth+\".tscn\").instance()
+	$skeleton.add_child(take_cloth)
+	generate_mesh(take_cloth)
+"
+
+[sub_resource type="CapsuleShape" id=2]
+
+[node name="character" type="KinematicBody"]
+script = SubResource( 1 )
+
+[node name="CollisionShape" type="CollisionShape" parent="."]
+shape = SubResource( 2 )
+
+[node name="skeleton" type="Skeleton" parent="."]
+bones/0/name = "hips"
+bones/0/parent = -1
+bones/0/rest = Transform( 1, 0, 0, 0, 0.987517, 0.15751, 0, -0.15751, 0.987517, 0, 0.881941, 0.013399 )
+bones/0/enabled = true
+bones/0/bound_children = [  ]
+bones/1/name = "spine"
+bones/1/parent = 0
+bones/1/rest = Transform( 1, 0, 0, 0, 0.983678, -0.17994, 0, 0.17994, 0.983678, 0, 0.148685, -6.78934e-07 )
+bones/1/enabled = true
+bones/1/bound_children = [  ]
+bones/2/name = "chest"
+bones/2/parent = 1
+bones/2/rest = Transform( 1, 0, 0, 0, 0.995635, 0.093328, 0, -0.093328, 0.995635, 0, 0.0758796, 4.56348e-07 )
+bones/2/enabled = true
+bones/2/bound_children = [  ]
+bones/3/name = "chest_1"
+bones/3/parent = 2
+bones/3/rest = Transform( 1, 0, 0, 0, 0.978884, -0.204417, 0, 0.204417, 0.978884, 0, 0.145233, -6.70552e-07 )
+bones/3/enabled = true
+bones/3/bound_children = [  ]
+bones/4/name = "breast_l"
+bones/4/parent = 3
+bones/4/rest = Transform( -0.856354, 0.516389, -8.34465e-07, -0.00770476, -0.0127757, 0.999889, 0.516331, 0.856259, 0.014919, 0, -1.09663e-07, -3.72529e-09 )
+bones/4/enabled = true
+bones/4/bound_children = [  ]
+bones/5/name = "breast_r"
+bones/5/parent = 3
+bones/5/rest = Transform( -0.856354, -0.516389, 8.34465e-07, 0.00770476, -0.0127757, 0.999889, -0.516331, 0.856259, 0.014919, 0, -1.09663e-07, -3.72529e-09 )
+bones/5/enabled = true
+bones/5/bound_children = [  ]
+bones/6/name = "neck"
+bones/6/parent = 3
+bones/6/rest = Transform( 1, 0, 0, 0, 0.972953, -0.231002, 0, 0.231002, 0.972953, 0, 0.177196, -2.76603e-07 )
+bones/6/enabled = true
+bones/6/bound_children = [  ]
+bones/7/name = "head"
+bones/7/parent = 6
+bones/7/rest = Transform( 1, 0, 0, 0, 0.915289, 0.402798, 0, -0.402798, 0.915289, 0, 0.108591, 1.26287e-06 )
+bones/7/enabled = true
+bones/7/bound_children = [  ]
+bones/8/name = "jaw"
+bones/8/parent = 7
+bones/8/rest = Transform( 1, 0, 0, 0, -0.655443, -0.755245, 0, 0.755245, -0.655443, 0, 0.00587802, 0.0127087 )
+bones/8/enabled = true
+bones/8/bound_children = [  ]
+bones/9/name = "tongue_base"
+bones/9/parent = 8
+bones/9/rest = Transform( -1, -1.42109e-14, -1.50996e-07, 1.07811e-07, 0.700145, -0.714001, 1.05719e-07, -0.714001, -0.700145, 0, 0.0310196, 0.0190813 )
+bones/9/enabled = true
+bones/9/bound_children = [  ]
+bones/10/name = "tongue_mod"
+bones/10/parent = 9
+bones/10/rest = Transform( 1, 2.04959e-08, -6.22801e-08, -1.18524e-08, 0.990745, 0.135738, 6.44857e-08, -0.135738, 0.990745, -5.4623e-13, 0.029245, 3.75044e-06 )
+bones/10/enabled = true
+bones/10/bound_children = [  ]
+bones/11/name = "tongue_tip"
+bones/11/parent = 10
+bones/11/rest = Transform( 1, 4.13737e-08, 1.05288e-08, -4.14233e-08, 0.880618, 0.473827, 1.03321e-08, -0.473827, 0.880618, 7.28975e-13, 0.020345, -8.19727e-06 )
+bones/11/enabled = true
+bones/11/bound_children = [  ]
+bones/12/name = "lolid_l"
+bones/12/parent = 7
+bones/12/rest = Transform( -0.998812, 0.0469508, 0.0130623, -0.0075917, -0.41466, 0.909945, 0.0481391, 0.908764, 0.414524, 0.029036, 0.0353866, 0.0760735 )
+bones/12/enabled = true
+bones/12/bound_children = [  ]
+bones/13/name = "lolid_r"
+bones/13/parent = 7
+bones/13/rest = Transform( -0.998812, -0.0469508, -0.0130623, 0.0075917, -0.41466, 0.909945, -0.0481391, 0.908764, 0.414524, -0.029036, 0.0353866, 0.0760735 )
+bones/13/enabled = true
+bones/13/bound_children = [  ]
+bones/14/name = "uplid_l"
+bones/14/parent = 7
+bones/14/rest = Transform( -0.998812, 0.0457664, -0.0167493, -0.00758717, 0.193466, 0.981078, 0.0481409, 0.980039, -0.192889, 0.029036, 0.0353866, 0.0760735 )
+bones/14/enabled = true
+bones/14/bound_children = [  ]
+bones/15/name = "uplid_r"
+bones/15/parent = 7
+bones/15/rest = Transform( -0.998812, -0.0457664, 0.0167493, 0.00758717, 0.193466, 0.981078, -0.0481409, 0.980039, -0.192889, -0.029036, 0.0353866, 0.0760735 )
+bones/15/enabled = true
+bones/15/bound_children = [  ]
+bones/16/name = "eye_l"
+bones/16/parent = 7
+bones/16/rest = Transform( -0.998921, 0.0464132, -0.00159489, -0.00730594, -0.12314, 0.992362, 0.0458624, 0.991303, 0.123347, 0.029036, 0.0353866, 0.0760735 )
+bones/16/enabled = true
+bones/16/bound_children = [  ]
+bones/17/name = "eye_r"
+bones/17/parent = 7
+bones/17/rest = Transform( -0.998921, -0.0464132, 0.00159489, 0.00730594, -0.12314, 0.992362, -0.0458624, 0.991303, 0.123347, -0.029036, 0.0353866, 0.0760735 )
+bones/17/enabled = true
+bones/17/bound_children = [  ]
+bones/18/name = "shoulder_l"
+bones/18/parent = 3
+bones/18/rest = Transform( -0.149748, 0.988363, 0.0267345, -0.96879, -0.152077, 0.195753, 0.197541, 0.00341346, 0.980289, 0.022861, 0.108572, 0.0262846 )
+bones/18/enabled = true
+bones/18/bound_children = [  ]
+bones/19/name = "upper_arm_l"
+bones/19/parent = 18
+bones/19/rest = Transform( 0.77111, 0.636095, 0.0277715, -0.636479, 0.77126, 0.00722829, -0.0168212, -0.0232498, 0.999588, 1.84227e-06, 0.149641, 2.4261e-07 )
+bones/19/enabled = true
+bones/19/bound_children = [  ]
+bones/20/name = "forearm_l"
+bones/20/parent = 19
+bones/20/rest = Transform( 0.999985, -0.00380677, 0.00390003, 0.00544361, 0.732143, -0.681129, -0.000262484, 0.68114, 0.732153, -2.88116e-06, 0.244366, -4.5076e-07 )
+bones/20/enabled = true
+bones/20/bound_children = [  ]
+bones/21/name = "hand_l"
+bones/21/parent = 20
+bones/21/rest = Transform( 0.639329, 0.0517127, 0.767193, 0.0371673, 0.994491, -0.0980066, -0.768035, 0.0911729, 0.633885, -6.64964e-07, 0.239928, -3.57628e-06 )
+bones/21/enabled = true
+bones/21/bound_children = [  ]
+bones/22/name = "thumb_1_l"
+bones/22/parent = 21
+bones/22/rest = Transform( -0.465273, -0.0217392, 0.8849, 0.82203, 0.360178, 0.441065, -0.32831, 0.932631, -0.149711, -0.0159344, 0.0373226, 0.0188906 )
+bones/22/enabled = true
+bones/22/bound_children = [  ]
+bones/23/name = "thumb_2_l"
+bones/23/parent = 22
+bones/23/rest = Transform( 0.931552, 0.358684, -0.0596409, -0.363488, 0.922847, -0.127395, 0.00934489, 0.140354, 0.990057, 2.16067e-06, 0.0310134, -8.06153e-06 )
+bones/23/enabled = true
+bones/23/bound_children = [  ]
+bones/24/name = "thumb_3_l"
+bones/24/parent = 23
+bones/24/rest = Transform( 0.997789, 0.0637608, -0.0187366, -0.0664567, 0.957344, -0.281206, 7.43754e-06, 0.281829, 0.959465, 1.47521e-06, 0.0364049, 8.62032e-06 )
+bones/24/enabled = true
+bones/24/bound_children = [  ]
+bones/25/name = "f_index_1_l"
+bones/25/parent = 21
+bones/25/rest = Transform( 0.556939, 0.0770895, 0.826968, 0.209803, 0.950334, -0.229886, -0.803618, 0.301533, 0.513104, -0.0164628, 0.103618, 0.0208822 )
+bones/25/enabled = true
+bones/25/bound_children = [  ]
+bones/26/name = "f_index_2_l"
+bones/26/parent = 25
+bones/26/rest = Transform( 0.999908, -0.0115835, 0.00702929, 0.0128296, 0.976257, -0.216235, -0.00435764, 0.216305, 0.976316, 9.98378e-07, 0.0259763, 6.63102e-07 )
+bones/26/enabled = true
+bones/26/bound_children = [  ]
+bones/27/name = "f_index_3_l"
+bones/27/parent = 26
+bones/27/rest = Transform( 0.999305, -0.0371895, 0.00252274, 0.0372119, 0.991394, -0.125511, 0.00216666, 0.125518, 0.992089, 1.47521e-06, 0.0231998, -2.27988e-06 )
+bones/27/enabled = true
+bones/27/bound_children = [  ]
+bones/28/name = "f_middle_1_l"
+bones/28/parent = 21
+bones/28/rest = Transform( 0.637017, 0.323421, 0.69972, -0.0852474, 0.931715, -0.353045, -0.766121, 0.165247, 0.621089, 5.126e-06, 0.102753, -4.91738e-07 )
+bones/28/enabled = true
+bones/28/bound_children = [  ]
+bones/29/name = "f_middle_2_l"
+bones/29/parent = 28
+bones/29/rest = Transform( 0.997318, -0.0729146, 0.0063036, 0.0731845, 0.992936, -0.0933905, 0.000550458, 0.0936014, 0.99561, -2.20537e-06, 0.0339944, -1.08778e-06 )
+bones/29/enabled = true
+bones/29/bound_children = [  ]
+bones/30/name = "f_middle_3_l"
+bones/30/parent = 29
+bones/30/rest = Transform( 0.99993, 0.0118124, -0.000795417, -0.0118113, 0.990718, -0.135417, -0.00081157, 0.135417, 0.990788, -2.83122e-07, 0.0277631, -1.71363e-07 )
+bones/30/enabled = true
+bones/30/bound_children = [  ]
+bones/31/name = "f_pinky_1_l"
+bones/31/parent = 21
+bones/31/rest = Transform( 0.673796, 0.553828, 0.489156, -0.436972, 0.832482, -0.340631, -0.595865, 0.0157684, 0.80293, 0.0314135, 0.0874836, -0.0217678 )
+bones/31/enabled = true
+bones/31/bound_children = [  ]
+bones/32/name = "f_pinky_2_l"
+bones/32/parent = 31
+bones/32/rest = Transform( 0.998784, -0.0489319, 0.0059417, 0.0492485, 0.985614, -0.161677, 0.00205493, 0.161773, 0.986826, 8.9407e-07, 0.0214158, -6.63102e-06 )
+bones/32/enabled = true
+bones/32/bound_children = [  ]
+bones/33/name = "f_pinky_3_l"
+bones/33/parent = 32
+bones/33/rest = Transform( 0.999743, 0.0226833, 0.000224608, -0.0226837, 0.99959, 0.017492, 0.00017226, -0.0174926, 0.999847, 1.38581e-06, 0.0156924, 8.10251e-06 )
+bones/33/enabled = true
+bones/33/bound_children = [  ]
+bones/34/name = "f_ring_1_l"
+bones/34/parent = 21
+bones/34/rest = Transform( 0.619053, 0.425623, 0.660014, -0.269027, 0.904489, -0.330946, -0.737833, 0.0273118, 0.67443, 0.014336, 0.0970188, -0.0131662 )
+bones/34/enabled = true
+bones/34/bound_children = [  ]
+bones/35/name = "f_ring_2_l"
+bones/35/parent = 34
+bones/35/rest = Transform( 0.996286, -0.0857997, 0.00722586, 0.0860497, 0.989187, -0.118763, 0.00304209, 0.118944, 0.992896, 5.36442e-06, 0.0298665, -3.69549e-06 )
+bones/35/enabled = true
+bones/35/bound_children = [  ]
+bones/36/name = "f_ring_3_l"
+bones/36/parent = 35
+bones/36/rest = Transform( 0.99879, 0.0490794, -0.00304958, -0.0490926, 0.991647, -0.119276, -0.00282991, 0.119282, 0.992857, -3.21865e-06, 0.0249356, 1.40816e-06 )
+bones/36/enabled = true
+bones/36/bound_children = [  ]
+bones/37/name = "shoulder_r"
+bones/37/parent = 3
+bones/37/rest = Transform( -0.149748, -0.988363, -0.0267345, 0.96879, -0.152077, 0.195753, -0.197541, 0.00341346, 0.980289, -0.022861, 0.108572, 0.0262846 )
+bones/37/enabled = true
+bones/37/bound_children = [  ]
+bones/38/name = "upper_arm_r"
+bones/38/parent = 37
+bones/38/rest = Transform( 0.77111, -0.636095, -0.0277715, 0.636479, 0.77126, 0.00722829, 0.0168212, -0.0232498, 0.999588, -1.84227e-06, 0.149641, 2.4261e-07 )
+bones/38/enabled = true
+bones/38/bound_children = [  ]
+bones/39/name = "forearm_r"
+bones/39/parent = 38
+bones/39/rest = Transform( 0.999985, 0.00380677, -0.00390003, -0.00544361, 0.732143, -0.681129, 0.000262484, 0.68114, 0.732153, 2.88116e-06, 0.244366, -4.5076e-07 )
+bones/39/enabled = true
+bones/39/bound_children = [  ]
+bones/40/name = "hand_r"
+bones/40/parent = 39
+bones/40/rest = Transform( 0.639329, -0.0517127, -0.767193, -0.0371673, 0.994491, -0.0980066, 0.768035, 0.0911729, 0.633885, 6.64964e-07, 0.239928, -3.57628e-06 )
+bones/40/enabled = true
+bones/40/bound_children = [  ]
+bones/41/name = "thumb_1_r"
+bones/41/parent = 40
+bones/41/rest = Transform( -0.465273, 0.0217392, -0.8849, -0.82203, 0.360178, 0.441065, 0.32831, 0.932631, -0.149711, 0.0159344, 0.0373226, 0.0188906 )
+bones/41/enabled = true
+bones/41/bound_children = [  ]
+bones/42/name = "thumb_2_r"
+bones/42/parent = 41
+bones/42/rest = Transform( 0.931552, -0.358684, 0.0596409, 0.363488, 0.922847, -0.127395, -0.00934489, 0.140354, 0.990057, -2.16067e-06, 0.0310134, -8.06153e-06 )
+bones/42/enabled = true
+bones/42/bound_children = [  ]
+bones/43/name = "thumb_3_r"
+bones/43/parent = 42
+bones/43/rest = Transform( 0.997789, -0.0637608, 0.0187366, 0.0664567, 0.957344, -0.281206, -7.43754e-06, 0.281829, 0.959465, -1.47521e-06, 0.0364049, 8.62032e-06 )
+bones/43/enabled = true
+bones/43/bound_children = [  ]
+bones/44/name = "f_index_1_r"
+bones/44/parent = 40
+bones/44/rest = Transform( 0.556939, -0.0770895, -0.826968, -0.209803, 0.950334, -0.229886, 0.803618, 0.301533, 0.513104, 0.0164628, 0.103618, 0.0208822 )
+bones/44/enabled = true
+bones/44/bound_children = [  ]
+bones/45/name = "f_index_2_r"
+bones/45/parent = 44
+bones/45/rest = Transform( 0.999908, 0.0115835, -0.00702929, -0.0128296, 0.976257, -0.216235, 0.00435764, 0.216305, 0.976316, -9.98378e-07, 0.0259763, 6.63102e-07 )
+bones/45/enabled = true
+bones/45/bound_children = [  ]
+bones/46/name = "f_index_3_r"
+bones/46/parent = 45
+bones/46/rest = Transform( 0.999305, 0.0371895, -0.00252274, -0.0372119, 0.991394, -0.125511, -0.00216666, 0.125518, 0.992089, -1.47521e-06, 0.0231998, -2.27988e-06 )
+bones/46/enabled = true
+bones/46/bound_children = [  ]
+bones/47/name = "f_middle_1_r"
+bones/47/parent = 40
+bones/47/rest = Transform( 0.637017, -0.323421, -0.69972, 0.0852474, 0.931715, -0.353045, 0.766121, 0.165247, 0.621089, -5.126e-06, 0.102753, -4.91738e-07 )
+bones/47/enabled = true
+bones/47/bound_children = [  ]
+bones/48/name = "f_middle_2_r"
+bones/48/parent = 47
+bones/48/rest = Transform( 0.997318, 0.0729146, -0.0063036, -0.0731845, 0.992936, -0.0933905, -0.000550458, 0.0936014, 0.99561, 2.20537e-06, 0.0339944, -1.08778e-06 )
+bones/48/enabled = true
+bones/48/bound_children = [  ]
+bones/49/name = "f_middle_3_r"
+bones/49/parent = 48
+bones/49/rest = Transform( 0.99993, -0.0118124, 0.000795417, 0.0118113, 0.990718, -0.135417, 0.00081157, 0.135417, 0.990788, 2.83122e-07, 0.0277631, -1.71363e-07 )
+bones/49/enabled = true
+bones/49/bound_children = [  ]
+bones/50/name = "f_pinky_1_r"
+bones/50/parent = 40
+bones/50/rest = Transform( 0.673796, -0.553828, -0.489156, 0.436972, 0.832482, -0.340631, 0.595865, 0.0157684, 0.80293, -0.0314135, 0.0874836, -0.0217678 )
+bones/50/enabled = true
+bones/50/bound_children = [  ]
+bones/51/name = "f_pinky_2_r"
+bones/51/parent = 50
+bones/51/rest = Transform( 0.998784, 0.0489319, -0.0059417, -0.0492485, 0.985614, -0.161677, -0.00205493, 0.161773, 0.986826, -8.9407e-07, 0.0214158, -6.63102e-06 )
+bones/51/enabled = true
+bones/51/bound_children = [  ]
+bones/52/name = "f_pinky_3_r"
+bones/52/parent = 51
+bones/52/rest = Transform( 0.999743, -0.0226833, -0.000224608, 0.0226837, 0.99959, 0.017492, -0.00017226, -0.0174926, 0.999847, -1.38581e-06, 0.0156924, 8.10251e-06 )
+bones/52/enabled = true
+bones/52/bound_children = [  ]
+bones/53/name = "f_ring_1_r"
+bones/53/parent = 40
+bones/53/rest = Transform( 0.619053, -0.425623, -0.660014, 0.269027, 0.904489, -0.330946, 0.737833, 0.0273118, 0.67443, -0.014336, 0.0970188, -0.0131662 )
+bones/53/enabled = true
+bones/53/bound_children = [  ]
+bones/54/name = "f_ring_2_r"
+bones/54/parent = 53
+bones/54/rest = Transform( 0.996286, 0.0857997, -0.00722586, -0.0860497, 0.989187, -0.118763, -0.00304209, 0.118944, 0.992896, -5.36442e-06, 0.0298665, -3.69549e-06 )
+bones/54/enabled = true
+bones/54/bound_children = [  ]
+bones/55/name = "f_ring_3_r"
+bones/55/parent = 54
+bones/55/rest = Transform( 0.99879, -0.0490794, 0.00304958, 0.0490926, 0.991647, -0.119276, 0.00282991, 0.119282, 0.992857, 3.21865e-06, 0.0249356, 1.40816e-06 )
+bones/55/enabled = true
+bones/55/bound_children = [  ]
+bones/56/name = "thigh_l"
+bones/56/parent = 0
+bones/56/rest = Transform( 0.891828, 0.103334, -0.440421, 0.126082, -0.991763, 0.0226139, -0.434457, -0.0756964, -0.897509, 0.10192, -0.00693042, -0.0095177 )
+bones/56/enabled = true
+bones/56/bound_children = [  ]
+bones/57/name = "butt_l"
+bones/57/parent = 56
+bones/57/rest = Transform( 0.973936, 0.0257257, 0.225357, 0.218984, 0.152268, -0.963774, -0.0591085, 0.988004, 0.142666, -1.74623e-08, 2.18279e-08, -2.23517e-08 )
+bones/57/enabled = true
+bones/57/bound_children = [  ]
+bones/58/name = "shin_l"
+bones/58/parent = 56
+bones/58/rest = Transform( 0.892093, 0.0444385, 0.449662, 0.0103428, 0.992883, -0.118642, -0.451734, 0.110491, 0.885284, 3.98606e-07, 0.399087, -7.45058e-09 )
+bones/58/enabled = true
+bones/58/bound_children = [  ]
+bones/59/name = "foot_l"
+bones/59/parent = 58
+bones/59/rest = Transform( 0.997436, 0.071561, -4.95464e-07, -0.021136, 0.294606, 0.955385, 0.0683684, -0.952936, 0.295363, 8.54405e-06, 0.409873, -5.39163e-07 )
+bones/59/enabled = true
+bones/59/bound_children = [  ]
+bones/60/name = "toe_l"
+bones/60/parent = 59
+bones/60/rest = Transform( 0.998419, -0.056136, -0.00283599, 0.0561833, 0.995233, 0.0797148, -0.0016524, -0.0797481, 0.996814, -7.69342e-06, 0.13999, -5.19678e-06 )
+bones/60/enabled = true
+bones/60/bound_children = [  ]
+bones/61/name = "thigh_r"
+bones/61/parent = 0
+bones/61/rest = Transform( 0.891828, -0.103334, 0.440421, -0.126082, -0.991763, 0.0226139, 0.434457, -0.0756964, -0.897509, -0.10192, -0.00693042, -0.0095177 )
+bones/61/enabled = true
+bones/61/bound_children = [  ]
+bones/62/name = "butt_r"
+bones/62/parent = 61
+bones/62/rest = Transform( 0.973936, -0.0257257, -0.225357, -0.218984, 0.152268, -0.963774, 0.0591085, 0.988004, 0.142666, 1.74623e-08, 2.18279e-08, -2.23517e-08 )
+bones/62/enabled = true
+bones/62/bound_children = [  ]
+bones/63/name = "shin_r"
+bones/63/parent = 61
+bones/63/rest = Transform( 0.892093, -0.0444385, -0.449662, -0.0103428, 0.992883, -0.118642, 0.451734, 0.110491, 0.885284, -3.98606e-07, 0.399087, -7.45058e-09 )
+bones/63/enabled = true
+bones/63/bound_children = [  ]
+bones/64/name = "foot_r"
+bones/64/parent = 63
+bones/64/rest = Transform( 0.997436, -0.071561, 4.95464e-07, 0.021136, 0.294606, 0.955385, -0.0683684, -0.952936, 0.295363, -8.54405e-06, 0.409873, -5.39163e-07 )
+bones/64/enabled = true
+bones/64/bound_children = [  ]
+bones/65/name = "toe_r"
+bones/65/parent = 64
+bones/65/rest = Transform( 0.998419, 0.056136, 0.00283599, -0.0561833, 0.995233, 0.0797148, 0.0016524, -0.0797481, 0.996814, 7.69342e-06, 0.13999, -5.19678e-06 )
+bones/65/enabled = true
+bones/65/bound_children = [  ]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+anims/skelnewsexydance = ExtResource( 1 )
