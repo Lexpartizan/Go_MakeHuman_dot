@@ -1,0 +1,1828 @@
+[gd_scene load_steps=4 format=2]
+
+[ext_resource path="res://char_edit/morph_slider.tscn" type="PackedScene" id=2]
+
+[sub_resource type="GDScript" id=1]
+script/source = "extends Control
+
+var forms = {}
+var character
+var cartoonish =1.0;
+func _ready():
+	randomize()
+	var Body_forms = {}
+	var Head_forms = {}
+	var Exp_forms = {}
+	var morphs=$morphs/Body.get_children()
+	for i in morphs:
+		i.connect(\"change_morph\", self, \"change_morph\") #подключаем сигналы со всех слайдеров
+		Body_forms[i.text] = i.vertex_groups
+	morphs=$morphs/Head.get_children()
+	for i in morphs:
+		i.connect(\"change_morph\", self, \"change_morph\") #подключаем сигналы со всех слайдеров
+		Head_forms[i.text] = i.vertex_groups
+	morphs=$morphs/Face.get_children()
+	for i in morphs:
+		i.connect(\"change_morph\", self, \"change_morph\") #подключаем сигналы со всех слайдеров
+		Head_forms[i.text] = i.vertex_groups
+	morphs=$morphs/Eyes.get_children()
+	for i in morphs:
+		i.connect(\"change_morph\", self, \"change_morph\") #подключаем сигналы со всех слайдеров
+		Head_forms[i.text] = i.vertex_groups
+	morphs=$morphs/Exp.get_children()
+	for i in morphs:
+		i.connect(\"change_morph\", self, \"change_morph\") #подключаем сигналы со всех слайдеров
+		Exp_forms[i.text] = i.vertex_groups
+	forms[\"body\"] = Body_forms
+	forms[\"head\"] = Head_forms
+	forms[\"exp\"] = Exp_forms
+	var path= OS.get_executable_path () # Здесь устанавливаем пути для открытия, сохранения файлов.
+	path =path.substr(0,path.find_last(\"\\\\\")+1)
+	$save_file.current_dir = path
+	$open_file.current_dir = path
+
+func set_character(human):
+	character = human
+	$cam/spt.add_child(character)
+	
+func change_morph(text,value):
+	character.update_morph(text,value)
+	
+func load_json (filepath):
+	var file=File.new()
+	file.open(filepath,File.READ)
+	var json = parse_json(file.get_as_text())
+	file.close()
+	return json
+
+func save_json(filepath, value):
+	var file=File.new()
+	file.open(filepath,File.WRITE)
+	file.store_line(to_json(value))
+	file.close()
+
+func _on_save_pressed():
+	$save_file.popup()
+	$save_file.invalidate()
+
+func _on_open_pressed():
+	$open_file.popup()
+	$open_file.invalidate()
+
+func _on_save_file_file_selected(path):
+	save_json(path,character.appearance)
+
+func _on_open_file_file_selected(path):
+	character.appearance=load_json(path)
+	reset_all_sliders(character.appearance)
+	character.generate_all_meshs()
+
+func reset_tab_slider(morphs, appearance):
+	for sld in morphs:
+		if appearance.has(sld.text):
+			sld.set_slider (appearance[sld.text])
+		else:
+			sld.set_slider(0)
+
+func reset_all_sliders(appearance):
+	reset_tab_slider($morphs/Body.get_children(), appearance)
+	reset_tab_slider($morphs/Head.get_children(), appearance)
+	reset_tab_slider($morphs/Face.get_children(), appearance)
+	reset_tab_slider($morphs/Eyes.get_children(), appearance)
+	reset_tab_slider($morphs/Exp.get_children(), appearance)
+	
+func set_chahracter(chr):
+	character=chr
+	reset_all_sliders(character.appearance)
+
+func _on_random_gen_pressed():
+	character.random_face_gen(cartoonish)
+	reset_tab_slider($morphs/Head.get_children(),character.appearance)
+	reset_tab_slider($morphs/Face.get_children(),character.appearance)
+	reset_tab_slider($morphs/Eyes.get_children(),character.appearance)
+	
+func _on_print_pressed():
+	$tips.text=str(character.appearance)
+
+func set_cartoonish(value):
+	cartoonish = value
+
+
+func _on_dress_mini_03_toggled(button_pressed):
+	if button_pressed:
+		character.take_on_clothes(\"dress_mini_03\")
+	else:
+		character.take_off_clothes(\"dress_mini_03\")
+
+func _on_male_shirt_01_toggled(button_pressed):
+	if button_pressed:
+		character.take_on_clothes(\"male_shirt_01\")
+	else:
+		character.take_off_clothes(\"male_shirt_01\")
+
+func _on_male_jeans_01_toggled(button_pressed):
+	if button_pressed:
+		character.take_on_clothes(\"male_jeans_01\")
+	else:
+		character.take_off_clothes(\"male_jeans_01\")
+"
+
+[sub_resource type="GDScript" id=2]
+script/source = "extends Camera
+var right_mouse_pressed = false
+var midle_mouse_pressed = false
+var speed_rot=0.005
+var default_translation = Vector3()
+# Called when the node enters the scene tree for the first time.
+func _ready():
+	default_translation = $spt.translation
+	pass # Replace with function body.
+
+func _input(event):
+	if event is InputEventMouseButton:
+		if event.button_index == BUTTON_RIGHT:
+			if event.pressed:
+				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+				right_mouse_pressed = true
+			else:
+				Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+				right_mouse_pressed = false
+		if event.button_index == BUTTON_MIDDLE:
+			if event.pressed:
+				midle_mouse_pressed = true
+			else:
+				midle_mouse_pressed = false
+		if event.button_index == BUTTON_WHEEL_UP:
+			$spt.translation.z += speed_rot*5
+		if event.button_index == BUTTON_WHEEL_DOWN:
+			$spt.translation.z -= speed_rot*5
+	if event is InputEventMouseMotion:
+		if midle_mouse_pressed:
+			if (abs(event.relative.x) > abs(event.relative.y)):
+				$spt.translation.x +=event.relative.x*speed_rot
+			else:
+				$spt.translation.y -=event.relative.y*speed_rot
+		if right_mouse_pressed:
+			if (abs(event.relative.x) > abs(event.relative.y)):
+				$spt.rotate_y(event.relative.x*speed_rot)
+			else:
+				$spt.rotate_x(event.relative.y*speed_rot)
+
+
+
+func _on_reset_view_pressed():
+	$spt.translation = default_translation
+	$spt.rotation_degrees = Vector3 (0,0,0)
+"
+
+[node name="Control" type="Control"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = SubResource( 1 )
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="dress_mini_03" type="CheckBox" parent="."]
+margin_left = 1111.24
+margin_top = 590.0
+margin_right = 1231.24
+margin_bottom = 614.0
+text = "dress_mini_03"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="male_shirt_01" type="CheckBox" parent="."]
+margin_left = 1111.24
+margin_top = 612.071
+margin_right = 1228.24
+margin_bottom = 636.071
+text = "male_shirt_01"
+
+[node name="male_jeans_01" type="CheckBox" parent="."]
+margin_left = 1110.24
+margin_top = 632.632
+margin_right = 1232.24
+margin_bottom = 656.632
+text = "male_jeans_01"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="tips" type="Label" parent="."]
+margin_left = 920.0
+margin_top = 60.0
+margin_right = 1256.0
+margin_bottom = 564.0
+text = "Right mouse - rotate
+Middle mouse Pan
+Wheel - Zoom"
+autowrap = true
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="save_file" type="FileDialog" parent="."]
+margin_left = 10.0
+margin_top = 32.0
+margin_right = 1024.0
+margin_bottom = 590.0
+window_title = "Сохранить файл"
+access = 2
+filters = PoolStringArray( "*.json" )
+current_dir = "C:/"
+current_path = "C:/"
+
+[node name="open_file" type="FileDialog" parent="."]
+margin_left = 10.0
+margin_top = 32.0
+margin_right = 1024.0
+margin_bottom = 590.0
+window_title = "Open a File"
+mode = 0
+access = 2
+filters = PoolStringArray( "*.json" )
+current_dir = "C:/"
+current_path = "C:/"
+
+[node name="print" type="Button" parent="."]
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+margin_left = -8.0
+margin_top = -30.0
+margin_right = 132.0
+margin_bottom = -2.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+text = "print params"
+
+[node name="random_gen" type="Button" parent="."]
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+margin_left = 132.0
+margin_top = -30.0
+margin_right = 311.0
+margin_bottom = -2.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+text = "Random face generator"
+
+[node name="Label" type="Label" parent="random_gen"]
+margin_left = 8.0
+margin_top = -40.0
+margin_right = 178.0
+margin_bottom = -16.0
+text = "face cartoonish"
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="HSlider" type="HSlider" parent="random_gen/Label"]
+margin_left = -8.0
+margin_top = 20.0
+margin_right = 171.0
+margin_bottom = 36.0
+max_value = 1.0
+step = 0.0
+value = 1.0
+ticks_on_borders = true
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="reset_view" type="Button" parent="."]
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+margin_left = -90.0
+margin_top = -30.0
+margin_right = -8.0
+margin_bottom = -2.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+action_mode = 0
+text = "Reset View"
+
+[node name="save" type="Button" parent="."]
+anchor_left = 1.0
+anchor_right = 1.0
+margin_left = -90.0
+margin_bottom = 32.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+action_mode = 0
+text = "Save"
+
+[node name="open" type="Button" parent="."]
+anchor_left = 1.0
+anchor_right = 1.0
+margin_left = -190.0
+margin_right = -90.0
+margin_bottom = 32.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+action_mode = 0
+text = "Open"
+
+[node name="cam" type="Camera" parent="."]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, -0.0345633, 0.865932, 1.52344 )
+size = 1.5
+near = 0.01
+script = SubResource( 2 )
+
+[node name="spt" type="Spatial" parent="cam"]
+transform = Transform( 1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0303633, -0.898369, -1.43457 )
+
+[node name="morphs" type="TabContainer" parent="."]
+margin_right = 353.0
+margin_bottom = 720.0
+size_flags_horizontal = 0
+size_flags_vertical = 0
+tab_align = 0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Body" type="Tabs" parent="morphs"]
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 4.0
+margin_top = 32.0
+margin_right = -4.0
+margin_bottom = -4.0
+
+[node name="fat" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 88.0
+margin_right = 209.0
+margin_bottom = 119.0
+text = "fat"
+
+[node name="zombie" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 120.0
+margin_top = 177.0
+margin_right = 210.0
+margin_bottom = 208.0
+text = "zombie"
+
+[node name="armfat" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 90.0
+margin_right = 326.0
+margin_bottom = 121.0
+text = "armfat"
+vertex_groups = PoolColorArray( 0, 1, 0, 1 )
+
+[node name="legfat" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 88.0
+margin_right = 90.0
+margin_bottom = 119.0
+text = "legfat"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 1, 1 )
+
+[node name="woman1" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 120.0
+margin_top = -2.0
+margin_right = 210.0
+margin_bottom = 29.0
+text = "woman1"
+
+[node name="woman2" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 239.0
+margin_top = -2.0
+margin_right = 329.0
+margin_bottom = 29.0
+text = "woman2"
+
+[node name="man" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 2.38419e-07
+margin_top = -2.0
+margin_right = 90.0
+margin_bottom = 29.0
+text = "man"
+
+[node name="skinny" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 118.0
+margin_right = 326.0
+margin_bottom = 149.0
+text = "skinny"
+
+[node name="muscle" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 58.0
+margin_right = 209.0
+margin_bottom = 89.0
+text = "muscle"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, 0, 1 )
+
+[node name="armmuscle" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 58.0
+margin_right = 326.0
+margin_bottom = 89.0
+text = "armmuscle"
+vertex_groups = PoolColorArray( 0, 1, 0, 1 )
+
+[node name="legmuscle" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 59.0
+margin_right = 90.0
+margin_bottom = 90.0
+text = "legmuscle"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 1, 1 )
+
+[node name="old" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 118.0
+margin_right = 209.0
+margin_bottom = 149.0
+text = "old"
+
+[node name="child" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 118.0
+margin_right = 90.0
+margin_bottom = 149.0
+text = "child"
+
+[node name="pregnancy" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 120.0
+margin_top = 148.0
+margin_right = 210.0
+margin_bottom = 179.0
+text = "pregnancy"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="stomach+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 148.0
+margin_right = 326.0
+margin_bottom = 179.0
+text = "stomach+"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="stomach-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 4.76837e-07
+margin_top = 148.0
+margin_right = 90.0
+margin_bottom = 179.0
+text = "stomach-"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="navel-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 208.0
+margin_right = 90.0
+margin_bottom = 239.0
+text = "navel-"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="navel+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 208.0
+margin_right = 326.0
+margin_bottom = 239.0
+text = "navel+"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="navel_move" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 208.0
+margin_right = 209.0
+margin_bottom = 239.0
+text = "navel_move"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="butt_cast" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 238.0
+margin_right = 209.0
+margin_bottom = 269.0
+text = "butt_cast"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="butt_pam1_+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 238.0
+margin_right = 326.0
+margin_bottom = 269.0
+text = "butt_pam1_+"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="butt_pam1_-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 238.0
+margin_right = 90.0
+margin_bottom = 269.0
+text = "butt_pam1_-"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="breast1" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 269.0
+margin_right = 90.0
+margin_bottom = 300.0
+text = "breast1"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 0, 0, 1, 1 )
+
+[node name="breast2" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 268.0
+margin_right = 209.0
+margin_bottom = 299.0
+text = "breast2"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 0, 0, 1, 1 )
+
+[node name="breast3" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 268.0
+margin_right = 326.0
+margin_bottom = 299.0
+text = "breast3"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 0, 0, 1, 1 )
+
+[node name="breast_pam1" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 298.0
+margin_right = 90.0
+margin_bottom = 329.0
+text = "breast_pam1"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 0, 0, 1, 1 )
+
+[node name="breast_pam2" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 298.0
+margin_right = 209.0
+margin_bottom = 329.0
+text = "breast_pam2"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 0, 1 )
+
+[node name="breast_pam3" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 298.0
+margin_right = 326.0
+margin_bottom = 329.0
+text = "breast_pam3"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 0, 0, 1, 1 )
+
+[node name="breast_pam4_+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 328.0
+margin_right = 332.0
+margin_bottom = 359.0
+text = "breast_pam4_+"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 0, 0, 1, 1 )
+
+[node name="breast_pam4_-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 328.0
+margin_bottom = 359.0
+text = "breast_pam4_-"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 0, 1 )
+
+[node name="torso_pam1_+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 358.0
+margin_right = 332.0
+margin_bottom = 389.0
+text = "torso_pam1_+"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1 )
+
+[node name="torso_pam1_-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 358.0
+margin_bottom = 389.0
+text = "torso_pam1_-"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1 )
+
+[node name="torso_pam2_+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 388.0
+margin_right = 332.0
+margin_bottom = 419.0
+text = "torso_pam2_+"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 0, 0, 1, 1 )
+
+[node name="torso_pam3_+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 418.0
+margin_right = 332.0
+margin_bottom = 449.0
+text = "torso_pam3_+"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 1, 1 )
+
+[node name="torso_pam4_+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 448.0
+margin_right = 332.0
+margin_bottom = 479.0
+text = "torso_pam4_+"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 1, 1 )
+
+[node name="torso_pam3_-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 418.0
+margin_bottom = 449.0
+text = "torso_pam3_-"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 1, 1 )
+
+[node name="torso_pam2_-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 388.0
+margin_bottom = 419.0
+text = "torso_pam2_-"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 0, 1 )
+
+[node name="torso_pam4_-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 448.0
+margin_bottom = 479.0
+text = "torso_pam4_-"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 1, 1 )
+
+[node name="torso_pam5_+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 478.0
+margin_right = 332.0
+margin_bottom = 509.0
+text = "torso_pam5_+"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="torso_pam5_-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 479.0
+margin_bottom = 510.0
+text = "torso_pam5_-"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="torso_pam6" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 4.76837e-07
+margin_top = 511.282
+margin_bottom = 544.282
+text = "torso_pam6"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1 )
+
+[node name="torso_pam7" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 236.663
+margin_top = 512.0
+margin_right = 332.663
+margin_bottom = 545.0
+text = "torso_pam7"
+vertex_groups = PoolColorArray( 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 0, 1 )
+
+[node name="torso_pam8_+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 240.0
+margin_top = 545.282
+margin_right = 336.0
+margin_bottom = 578.282
+text = "torso_pam8_+"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 0, 1 )
+
+[node name="torso_pam8_-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_top = 542.0
+margin_bottom = 575.0
+text = "torso_pam8_-"
+vertex_groups = PoolColorArray( 0, 0, 1, 1, 0, 1, 0, 1 )
+
+[node name="torso_pam9_+" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = 240.0
+margin_top = 576.0
+margin_right = 336.0
+margin_bottom = 609.0
+text = "torso_pam9_+"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="torso_pam9_-" parent="morphs/Body" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 575.0
+margin_right = 95.3365
+margin_bottom = 608.0
+text = "torso_pam9_-"
+vertex_groups = PoolColorArray( 0, 0, 1, 1 )
+
+[node name="Head" type="Tabs" parent="morphs"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 4.0
+margin_top = 32.0
+margin_right = -4.0
+margin_bottom = -4.0
+
+[node name="african" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 4.76837e-07
+margin_top = -2.0
+margin_right = 90.0
+margin_bottom = 29.0
+text = "african"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 1 )
+
+[node name="asian" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 119.337
+margin_top = -2.0
+margin_right = 209.337
+margin_bottom = 29.0
+text = "asian"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1 )
+
+[node name="caucasian" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = -2.0
+margin_right = 326.0
+margin_bottom = 29.0
+text = "caucasian"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="double_neck" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 58.0
+margin_right = 326.0
+margin_bottom = 89.0
+text = "double_neck"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1 )
+
+[node name="head_young" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 58.0
+margin_right = 215.0
+margin_bottom = 91.0
+text = "head_young"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="head_oval" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 120.0
+margin_top = 28.0
+margin_right = 216.0
+margin_bottom = 61.0
+text = "head_oval"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="head_circle" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_top = 28.0
+margin_bottom = 61.0
+text = "head_circle"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="head_quad" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 236.04
+margin_top = 28.0
+margin_right = 332.04
+margin_bottom = 61.0
+text = "head_quad"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="head_inv_tris" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 118.282
+margin_right = 95.3365
+margin_bottom = 151.282
+text = "head_inv_tris"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="head_tris" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 118.282
+margin_right = 331.337
+margin_bottom = 151.282
+text = "head_tris"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="head_visok_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 148.282
+margin_right = 331.337
+margin_bottom = 181.282
+text = "head_visok_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1 )
+
+[node name="head _visok_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 148.282
+margin_right = 95.3365
+margin_bottom = 181.282
+text = "head _visok_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1 )
+
+[node name="neck_scale_XY" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 58.0
+margin_right = 95.3365
+margin_bottom = 91.0
+text = "neck_scale_XY"
+vertex_groups = PoolColorArray( 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1 )
+
+[node name="head_scale_X" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 88.2823
+margin_right = 95.3365
+margin_bottom = 121.282
+text = "head_scale_X"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="head_scale_Y" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 118.337
+margin_top = 88.2823
+margin_right = 214.337
+margin_bottom = 121.282
+text = "head_scale_Y"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="head_scale_Z" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 88.2823
+margin_right = 331.337
+margin_bottom = 121.282
+text = "head_scale_Z"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="head_pam1_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 178.282
+margin_right = 331.337
+margin_bottom = 211.282
+text = "head_pam1_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1 )
+
+[node name="head_pam1_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 178.282
+margin_right = 95.3365
+margin_bottom = 211.282
+text = "head_pam1_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1 )
+
+[node name="head_pam2_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 207.282
+margin_right = 331.337
+margin_bottom = 240.282
+text = "head_pam2_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1 )
+
+[node name="head_pam_2_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 208.282
+margin_right = 95.3365
+margin_bottom = 241.282
+text = "head_pam_2_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1 )
+
+[node name="head_pam_3_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 238.282
+margin_right = 331.337
+margin_bottom = 271.282
+text = "head_pam_3_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1 )
+
+[node name="head_pam_3_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 238.282
+margin_right = 95.3365
+margin_bottom = 271.282
+text = "head_pam_3_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1 )
+
+[node name="head_pam_4_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 268.282
+margin_right = 331.337
+margin_bottom = 301.282
+text = "head_pam_4_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1 )
+
+[node name="head_pam_4_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 268.282
+margin_right = 95.3365
+margin_bottom = 301.282
+text = "head_pam_4_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1 )
+
+[node name="head_pam_5_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 298.282
+margin_right = 331.337
+margin_bottom = 331.282
+text = "head_pam_5_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1 )
+
+[node name="head_pam_5_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 298.282
+margin_right = 95.3365
+margin_bottom = 331.282
+text = "head_pam_5_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1 )
+
+[node name="cheek_pam1_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 118.337
+margin_top = 148.282
+margin_right = 214.337
+margin_bottom = 181.282
+text = "cheek_pam1_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="cheek_pam1_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 118.337
+margin_top = 179.282
+margin_right = 214.337
+margin_bottom = 212.282
+text = "cheek_pam1_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="cheek_pam2_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 118.337
+margin_top = 208.282
+margin_right = 214.337
+margin_bottom = 241.282
+text = "cheek_pam2_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1 )
+
+[node name="cheek_pam3_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 118.337
+margin_top = 238.282
+margin_right = 214.337
+margin_bottom = 271.282
+text = "cheek_pam3_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 0, 1, 1 )
+
+[node name="cheek_pam4+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 118.337
+margin_top = 268.282
+margin_right = 214.337
+margin_bottom = 301.282
+text = "cheek_pam4+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="cheek_pam4_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 118.337
+margin_top = 298.282
+margin_right = 214.337
+margin_bottom = 331.282
+text = "cheek_pam4_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="jaw_pam1_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 328.282
+margin_right = 331.337
+margin_bottom = 361.282
+text = "jaw_pam1_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam3_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 358.282
+margin_right = 331.337
+margin_bottom = 391.282
+text = "jaw_pam3_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam1_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 328.282
+margin_right = 95.3365
+margin_bottom = 361.282
+text = "jaw_pam1_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam2" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 118.337
+margin_top = 358.282
+margin_right = 214.337
+margin_bottom = 391.282
+text = "jaw_pam2"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam3_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 358.282
+margin_right = 95.3365
+margin_bottom = 391.282
+text = "jaw_pam3_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam4_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 388.282
+margin_right = 331.337
+margin_bottom = 421.282
+text = "jaw_pam4_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam4_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 388.282
+margin_right = 95.3365
+margin_bottom = 421.282
+text = "jaw_pam4_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam5_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 418.282
+margin_right = 331.337
+margin_bottom = 451.282
+text = "jaw_pam5_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam5_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 418.282
+margin_right = 95.3365
+margin_bottom = 451.282
+text = "jaw_pam5_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam6_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 449.282
+margin_right = 331.337
+margin_bottom = 482.282
+text = "jaw_pam6_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam6_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 448.282
+margin_right = 95.3365
+margin_bottom = 481.282
+text = "jaw_pam6_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam7_+" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = 235.337
+margin_top = 478.282
+margin_right = 331.337
+margin_bottom = 511.282
+text = "jaw_pam7_+"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="jaw_pam7_-" parent="morphs/Head" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 478.282
+margin_right = 95.3365
+margin_bottom = 511.282
+text = "jaw_pam7_-"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1 )
+
+[node name="Face" type="Tabs" parent="morphs"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 4.0
+margin_top = 32.0
+margin_right = -4.0
+margin_bottom = -4.0
+
+[node name="nose_scale_X" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = -2.0
+margin_bottom = 31.0
+text = "nose_scale_X"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_scale_Y" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = -2.0
+margin_right = 215.0
+margin_bottom = 31.0
+text = "nose_scale_Y"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_scale_Z" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = -2.0
+margin_right = 332.0
+margin_bottom = 31.0
+text = "nose_scale_Z"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_move_Y_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 28.0
+margin_right = 336.0
+margin_bottom = 61.0
+text = "nose_move_Y_+"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_move_Z_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 58.0
+margin_right = 337.0
+margin_bottom = 91.0
+text = "nose_move_Z_+"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_move_Y_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 28.0
+margin_right = 100.0
+margin_bottom = 61.0
+text = "nose_move_Y_-"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_move_Z_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 58.0
+margin_right = 100.0
+margin_bottom = 91.0
+text = "nose_move_Z_-"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_scale_1_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 88.0
+margin_right = 100.0
+margin_bottom = 121.0
+text = "nose_scale_1_-"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_scale_2_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 88.0
+margin_right = 219.0
+margin_bottom = 121.0
+text = "nose_scale_2_-"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_scale_3_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 88.0
+margin_right = 336.0
+margin_bottom = 121.0
+text = "nose_scale_3_-"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_scale_1_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 118.0
+margin_right = 100.0
+margin_bottom = 151.0
+text = "nose_scale_1_+"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_scale_2_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 118.0
+margin_right = 219.0
+margin_bottom = 151.0
+text = "nose_scale_2_+"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_scale_3_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 118.0
+margin_right = 336.0
+margin_bottom = 151.0
+text = "nose_scale_3_+"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam1_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 149.0
+margin_right = 100.0
+margin_bottom = 182.0
+text = "nose_pam1_-"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam1_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 178.0
+margin_right = 100.0
+margin_bottom = 211.0
+text = "nose_pam1_+"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam2_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 146.0
+margin_right = 219.0
+margin_bottom = 179.0
+text = "nose_pam2_-"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam2_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 177.0
+margin_right = 219.0
+margin_bottom = 210.0
+text = "nose_pam2_+"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam3_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 146.0
+margin_right = 336.0
+margin_bottom = 179.0
+text = "nose_pam3_-"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam3_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 177.0
+margin_right = 336.0
+margin_bottom = 210.0
+text = "nose_pam3_+"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam4_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 208.0
+margin_right = 336.0
+margin_bottom = 241.0
+text = "nose_pam4_+"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam5" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 208.0
+margin_right = 219.0
+margin_bottom = 241.0
+text = "nose_pam5"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam4_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 208.0
+margin_right = 100.0
+margin_bottom = 241.0
+text = "nose_pam4_-"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam6_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 58.0
+margin_right = 219.0
+margin_bottom = 91.0
+text = "nose_pam6_+"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="nose_pam6_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 28.0
+margin_right = 219.0
+margin_bottom = 61.0
+text = "nose_pam6_-"
+vertex_groups = PoolColorArray( 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="lips_scale_X_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 268.0
+margin_right = 100.0
+margin_bottom = 301.0
+text = "lips_scale_X_-"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_scale_Y_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 268.0
+margin_right = 219.0
+margin_bottom = 301.0
+text = "lips_scale_Y_-"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_scale_Z_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 268.0
+margin_right = 336.0
+margin_bottom = 301.0
+text = "lips_scale_Z_-"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_scale_X_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 298.0
+margin_right = 100.0
+margin_bottom = 331.0
+text = "lips_scale_X_+"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_scale_Y_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 116.0
+margin_top = 298.0
+margin_right = 216.0
+margin_bottom = 331.0
+text = "lips_scale_Y_+"
+vertex_groups = PoolColorArray( 0, 0, 0, 1, 1, 0, 1, 1 )
+
+[node name="lips_scale_Z_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 298.0
+margin_right = 336.0
+margin_bottom = 331.0
+text = "lips_scale_Z_+"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_move_Y_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 328.0
+margin_right = 100.0
+margin_bottom = 361.0
+text = "lips_move_Y_-"
+vertex_groups = PoolColorArray( 0, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1 )
+
+[node name="lips_move_Y_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 328.0
+margin_right = 336.0
+margin_bottom = 361.0
+text = "lips_move_Y_+"
+vertex_groups = PoolColorArray( 0, 0, 0, 1, 1, 0, 1, 1 )
+
+[node name="lips_move_Z_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 358.0
+margin_right = 100.0
+margin_bottom = 391.0
+text = "lips_move_Z_-"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_move_Z_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 358.0
+margin_right = 336.0
+margin_bottom = 391.0
+text = "lips_move_Z_+"
+vertex_groups = PoolColorArray( 0, 0, 0, 1, 1, 0, 1, 1 )
+
+[node name="lips_pam1_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 389.0
+margin_right = 336.0
+margin_bottom = 422.0
+text = "lips_pam1_+"
+vertex_groups = PoolColorArray( 0, 0, 0, 1, 1, 0, 0, 1 )
+
+[node name="lips_pam2_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 418.0
+margin_right = 336.0
+margin_bottom = 451.0
+text = "lips_pam2_+"
+vertex_groups = PoolColorArray( 0, 0, 0, 1, 1, 0, 0, 1 )
+
+[node name="lips_pam3_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 449.0
+margin_right = 336.0
+margin_bottom = 482.0
+text = "lips_pam3_+"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_pam4_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 479.0
+margin_right = 336.0
+margin_bottom = 512.0
+text = "lips_pam4_+"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_pam5_+" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 508.0
+margin_right = 336.0
+margin_bottom = 541.0
+text = "lips_pam5_+"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_pam1_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 388.0
+margin_right = 100.0
+margin_bottom = 421.0
+text = "lips_pam1_-"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_pam2_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 419.0
+margin_right = 100.0
+margin_bottom = 452.0
+text = "lips_pam2_-"
+vertex_groups = PoolColorArray( 0, 0, 0, 1, 1, 0, 0, 1 )
+
+[node name="lips_pam3_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 449.0
+margin_right = 100.0
+margin_bottom = 482.0
+text = "lips_pam3_-"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_pam4_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 479.0
+margin_right = 100.0
+margin_bottom = 512.0
+text = "lips_pam4_-"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="lips_pam5_-" parent="morphs/Face" instance=ExtResource( 2 )]
+margin_top = 508.0
+margin_right = 100.0
+margin_bottom = 541.0
+text = "lips_pam5_-"
+vertex_groups = PoolColorArray( 0, 0, 0, 1 )
+
+[node name="Eyes" type="Tabs" parent="morphs"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 4.0
+margin_top = 32.0
+margin_right = -4.0
+margin_bottom = -4.0
+
+[node name="eye_pam2_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_top = 29.0
+margin_bottom = 62.0
+text = "eye_pam2_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1 )
+
+[node name="eye_pam2_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 28.0
+margin_right = 332.0
+margin_bottom = 61.0
+text = "eye_pam2_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1 )
+
+[node name="eye_pam1" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 116.0
+margin_top = -2.0
+margin_right = 212.0
+margin_bottom = 31.0
+text = "eye_pam1"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam3_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = -2.0
+margin_right = 332.0
+margin_bottom = 31.0
+text = "eye_pam3_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1, 1, 0, 1, 1 )
+
+[node name="eye_pam4_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+text = "eye_pam4_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam5_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 58.0
+margin_right = 332.0
+margin_bottom = 91.0
+text = "eye_pam5_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam5_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_top = 58.0
+margin_bottom = 91.0
+text = "eye_pam5_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam6_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_top = 88.0
+margin_bottom = 121.0
+text = "eye_pam6_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam6_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 88.0
+margin_right = 332.0
+margin_bottom = 121.0
+text = "eye_pam6_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam_7_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 118.0
+margin_right = 332.0
+margin_bottom = 151.0
+text = "eye_pam_7_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam_7_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_top = 118.0
+margin_bottom = 151.0
+text = "eye_pam_7_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam_8_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 148.0
+margin_right = 332.0
+margin_bottom = 181.0
+text = "eye_pam_8_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam_9_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 177.0
+margin_right = 332.0
+margin_bottom = 210.0
+text = "eye_pam_9_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam_8_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_top = 149.0
+margin_bottom = 182.0
+text = "eye_pam_8_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam_9_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 4.76837e-07
+margin_top = 177.0
+margin_bottom = 210.0
+text = "eye_pam_9_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam10_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 208.0
+margin_right = 332.0
+margin_bottom = 241.0
+text = "eye_pam10_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam10_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_top = 208.0
+margin_bottom = 241.0
+text = "eye_pam10_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam11_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 238.0
+margin_right = 332.0
+margin_bottom = 271.0
+text = "eye_pam11_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam11_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_top = 238.0
+margin_bottom = 271.0
+text = "eye_pam11_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam12_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 268.0
+margin_right = 332.0
+margin_bottom = 301.0
+text = "eye_pam12_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam12_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_top = 268.0
+margin_bottom = 301.0
+text = "eye_pam12_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam13_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 298.0
+margin_right = 332.0
+margin_bottom = 331.0
+text = "eye_pam13_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam13_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 4.76837e-07
+margin_top = 298.0
+margin_bottom = 331.0
+text = "eye_pam13_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam14_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 328.0
+margin_right = 332.0
+margin_bottom = 361.0
+text = "eye_pam14_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam14_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_top = 328.0
+margin_bottom = 361.0
+text = "eye_pam14_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam15_+" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 358.0
+margin_right = 332.0
+margin_bottom = 391.0
+text = "eye_pam15_+"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="eye_pam15_-" parent="morphs/Eyes" instance=ExtResource( 2 )]
+margin_top = 358.0
+margin_bottom = 391.0
+text = "eye_pam15_-"
+vertex_groups = PoolColorArray( 1, 1, 1, 1 )
+
+[node name="Exp" type="Tabs" parent="morphs"]
+visible = false
+anchor_right = 1.0
+anchor_bottom = 1.0
+margin_left = 4.0
+margin_top = 32.0
+margin_right = -4.0
+margin_bottom = -4.0
+
+[node name="exp_anger" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_top = -2.0
+margin_bottom = 31.0
+text = "exp_anger"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0.996078, 1, 1 )
+
+[node name="exp_boring" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 116.0
+margin_top = -2.0
+margin_right = 212.0
+margin_bottom = 31.0
+text = "exp_boring"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_cry" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = -2.0
+margin_right = 332.0
+margin_bottom = 31.0
+text = "exp_cry"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_determination" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_top = 28.0
+margin_right = 120.0
+margin_bottom = 61.0
+text = "exp_determination"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_disgust" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 116.0
+margin_top = 28.0
+margin_right = 236.0
+margin_bottom = 61.0
+text = "exp_disgust"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_doubt" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 28.0
+margin_right = 356.0
+margin_bottom = 61.0
+text = "exp_doubt"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_effort1" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_top = 58.0
+margin_right = 120.0
+margin_bottom = 91.0
+text = "exp_effort1"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_effort3" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 236.0
+margin_top = 58.0
+margin_right = 356.0
+margin_bottom = 91.0
+text = "exp_effort3"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_fear3" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 116.04
+margin_top = 59.3608
+margin_right = 236.04
+margin_bottom = 92.3608
+text = "exp_fear3"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_sad1" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 88.2823
+margin_right = 119.337
+margin_bottom = 121.282
+text = "exp_sad1"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_sad2" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 236.663
+margin_top = 84.9651
+margin_right = 356.663
+margin_bottom = 117.965
+text = "exp_sad2"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_sleep" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 4.76837e-07
+margin_top = 117.965
+margin_right = 120.0
+margin_bottom = 150.965
+text = "exp_sleep"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_stun" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 236.638
+margin_top = 118.955
+margin_right = 356.638
+margin_bottom = 151.955
+text = "exp_stun"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_smile1" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 146.0
+margin_right = 119.337
+margin_bottom = 179.0
+text = "exp_smile1"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_smile2" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 120.0
+margin_top = 146.0
+margin_right = 240.0
+margin_bottom = 179.0
+text = "exp_smile2"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_smile3" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 236.663
+margin_top = 146.0
+margin_right = 356.663
+margin_bottom = 179.0
+text = "exp_smile3"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_smile4" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_top = 178.0
+margin_right = 120.0
+margin_bottom = 211.0
+text = "exp_smile4"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1 )
+
+[node name="exp_smile5" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 236.663
+margin_top = 177.0
+margin_right = 356.663
+margin_bottom = 210.0
+text = "exp_smile5"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_treaten" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 208.0
+margin_right = 119.337
+margin_bottom = 241.0
+text = "exp_treaten"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_aim" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 236.638
+margin_top = 208.0
+margin_right = 356.638
+margin_bottom = 241.0
+text = "exp_aim"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_vocal" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = -0.663452
+margin_top = 238.0
+margin_right = 119.337
+margin_bottom = 271.0
+text = "exp_vocal"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_fff" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 236.663
+margin_top = 239.0
+margin_right = 356.663
+margin_bottom = 272.0
+text = "exp_fff"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_concentrating" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 120.0
+margin_top = 210.0
+margin_right = 240.0
+margin_bottom = 243.0
+text = "exp_concentrating"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+
+[node name="exp_airkiss" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 177.0
+margin_right = 239.0
+margin_bottom = 210.0
+text = "exp_airkiss"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 1, 1 )
+
+[node name="exp_devicios" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 239.0
+margin_right = 239.0
+margin_bottom = 272.0
+text = "exp_devicios"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1 )
+
+[node name="exp_sick" parent="morphs/Exp" instance=ExtResource( 2 )]
+margin_left = 119.0
+margin_top = 117.965
+margin_right = 239.0
+margin_bottom = 150.965
+text = "exp_sick"
+vertex_groups = PoolColorArray( 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 1, 1 )
+[connection signal="toggled" from="dress_mini_03" to="." method="_on_dress_mini_03_toggled"]
+[connection signal="toggled" from="male_shirt_01" to="." method="_on_male_shirt_01_toggled"]
+[connection signal="toggled" from="male_jeans_01" to="." method="_on_male_jeans_01_toggled"]
+[connection signal="file_selected" from="save_file" to="." method="_on_save_file_file_selected"]
+[connection signal="file_selected" from="open_file" to="." method="_on_open_file_file_selected"]
+[connection signal="pressed" from="print" to="." method="_on_print_pressed"]
+[connection signal="pressed" from="random_gen" to="." method="_on_random_gen_pressed"]
+[connection signal="value_changed" from="random_gen/Label/HSlider" to="." method="set_cartoonish"]
+[connection signal="pressed" from="reset_view" to="cam" method="_on_reset_view_pressed"]
+[connection signal="pressed" from="save" to="." method="_on_save_pressed"]
+[connection signal="pressed" from="open" to="." method="_on_open_pressed"]
