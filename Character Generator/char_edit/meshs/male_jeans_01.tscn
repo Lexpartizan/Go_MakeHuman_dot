@@ -1,0 +1,8 @@
+[gd_scene load_steps=3 format=2]
+
+[ext_resource path="res://char_edit/meshs/male_jeans_01.mesh" type="ArrayMesh" id=1]
+[ext_resource path="res://char_edit/meshs/mats/male_jeans_shirt_01.tres" type="Material" id=2]
+
+[node name="male_jeans_01" type="MeshInstance"]
+mesh = ExtResource( 1 )
+material/0 = ExtResource( 2 )
